@@ -10,7 +10,7 @@ This program allows to measure it using a method described by Woods and colleagu
 
 ```
 # optional - create and activate a virtual environment
-python3 -m venv .venv
+python3 -m venv venv
 source venv/bin/activate
 
 # install requirements
