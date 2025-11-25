@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Download Group Files</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        select, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #status {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>Download Files by Group</h2>
+
+    <label>Select Group:</label>
+    <select id="groupSelect">
+        <option value="">Loading...</option>
+    </select>
+
+    <button onclick="downloadZip()">Download ZIP</button>
+
+    <div id="status"></div>
+</div>
+
+<script>
+    async function loadGroups() {
+        const res = await fetch('/groups');
+        const groups = await res.json();
+
+        const select = document.getElementById('groupSelect');
+        select.innerHTML = "";
+
+        if (groups.length === 0) {
+            select.innerHTML = "<option>No groups found</option>";
+            return;
+        }
+
+        groups.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g;
+            opt.textContent = g;
+            select.appendChild(opt);
+        });
+    }
+
+    async function downloadZip() {
+        const group = document.getElementById('groupSelect').value;
+
+        if (!group) {
+            document.getElementById('status').textContent = "Please select a group.";
+            return;
+        }
+
+        window.location.href = `/download/${group}`;
+    }
+
+    // Load groups on page load
+    loadGroups();
+</script>
+</body>
+</html>
