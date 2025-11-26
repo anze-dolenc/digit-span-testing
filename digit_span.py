@@ -4,6 +4,8 @@ import datetime
 import pygame
 import os
 import pandas as pd
+import requests
+import configparser
 
 from mutagen.mp3 import MP3
 
@@ -12,6 +14,20 @@ journalpath = 'journal'
 soundmodelspath = 'soundmodels'
 
 trunks = [0,1,2,3,4,5,6,7,8,9]
+
+def send_data(name, url, group):
+    file_path = os.path.join(datapath, '{}_digit_span_log.csv'.format(name))
+
+    with open(file_path, 'rb') as f:
+        files = {'file': f}
+        username = name 
+        data = {'username': username, 'group': group}
+        response = requests.post(url, files=files, data=data)
+
+    if response.status_code == 200:
+        print("Data sent successfully.")
+    else:
+        print(f"Failed to send data. Status code: {response.status_code}")
 
 def get_mp3_duration(filepath):
     audio = MP3(filepath)
@@ -101,6 +117,34 @@ if __name__ == "__main__":
 
     # Ask for user's name
     name = input('Please enter your name ---> ')
+    os.system('cls||clear')
+
+    # Check if config file exists
+    config_file = 'config.ini'
+    config = configparser.ConfigParser()
+
+    url = ''
+    group = ''
+
+    if os.path.exists(config_file):
+        config.read(config_file)
+        if 'Settings' in config and 'url' in config['Settings'] and 'group' in config['Settings']:
+            url = config['Settings']['url']
+            group = config['Settings']['group']
+        else:
+            url = input('Please enter the URL ---> ')
+            group = input('Please enter the group ---> ')
+            config['Settings'] = {'url': url, 'group': group}
+            with open(config_file, 'w') as configfile:
+                config.write(configfile)
+    else:
+        print("Config file not found. Creating a new one.")
+        url = input('Please enter the URL ---> ')
+        group = input('Please enter the group ---> ')
+        config['Settings'] = {'url': url, 'group': group}
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
+
     os.system('cls||clear')
 
     current_date = datetime.date.today().isoformat()
@@ -366,6 +410,7 @@ if __name__ == "__main__":
             if benchmark_test_loop_nr == 14:
                 os.system('cls||clear')
                 df.to_csv(os.path.join(datapath, '{}_digit_span_log.csv'.format(name)), index=False)
+                send_data(name, url, group)
                 print('You have reached the end of benchmark test.')
                 print()
                 print('Press ENTER to continue')
@@ -386,6 +431,8 @@ if __name__ == "__main__":
             os.system('cls||clear')
             if user_input.lower() == 'quit':
                 df.to_csv(os.path.join(datapath, '{}_digit_span_log.csv'.format(name)), index=False)
+                if mode_int_to_word[mode_input] == 'TEST':
+                    send_data(name, url, group)
                 print('''OPTIONAL.
                     Please summarize your experience in this testing session (across trials)!''')
                 print()
