@@ -9,6 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3');
 const archiver = require('archiver');
+const basicAuth = require('express-basic-auth');
+require('dotenv').config();
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +39,52 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
         )`);
     }
 });
+
+
+app.post('/', (req, res) => {
+    const file = req.files?.file;
+    const username = req.body.username;
+    const group = req.body.group;
+
+    if (!file || !username || !group) {
+        return res.status(400).json({ error: 'File, username and group are required' });
+    }
+
+    const id = uuidv4();
+    const timestamp = new Date().toISOString();
+    const ip = req.ip;
+
+    const uploadDir = path.join(__dirname, 'uploads');
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    const filePath = path.join(uploadDir, `${id}-${file.name}`);
+
+    file.mv(filePath, (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to save file' });
+        }
+
+        db.run(
+            `INSERT INTO uploads (id, timestamp, ip, username, group_name,file_name) VALUES (?, ?, ?, ?,?,?)`,
+            [id, timestamp, ip, username, group, file.name],
+            (err) => {
+                if (err) {
+                    console.error('Error inserting record into database:', err.message);
+                    return res.status(500).json({ error: 'Failed to save record' });
+                }
+
+                res.json({ message: 'File uploaded successfully', id });
+            }
+        );
+    });
+});
+
+
+app.use(basicAuth({
+    users: { [process.env.LOGIN_USERNAME]: process.env.LOGIN_PASSWORD },
+    challenge: true,
+    unauthorizedResponse: (req) => 'Unauthorized'
+}));
 
 app.get('/', (req, res) => {
     const filePath = path.join(__dirname, 'index.html');
@@ -88,43 +137,7 @@ app.get('/download/:group', (req, res) => {
     });
 });
 
-app.post('/', (req, res) => {
-    const file = req.files?.file;
-    const username = req.body.username;
-    const group = req.body.group;
 
-    if (!file || !username || !group) {
-        return res.status(400).json({ error: 'File, username and group are required' });
-    }
-
-    const id = uuidv4();
-    const timestamp = new Date().toISOString();
-    const ip = req.ip;
-
-    const uploadDir = path.join(__dirname, 'uploads');
-    fs.mkdirSync(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, `${id}-${file.name}`);
-
-    file.mv(filePath, (err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Failed to save file' });
-        }
-
-        db.run(
-            `INSERT INTO uploads (id, timestamp, ip, username, group_name,file_name) VALUES (?, ?, ?, ?,?,?)`,
-            [id, timestamp, ip, username, group, file.name],
-            (err) => {
-                if (err) {
-                    console.error('Error inserting record into database:', err.message);
-                    return res.status(500).json({ error: 'Failed to save record' });
-                }
-
-                res.json({ message: 'File uploaded successfully', id });
-            }
-        );
-    });
-});
 
 app.listen(PORT, () => {
     console.log(`Server is running in ${ENV} mode on port ${PORT}`);
