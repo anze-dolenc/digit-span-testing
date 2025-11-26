@@ -42,6 +42,7 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
 
 
 app.post('/', (req, res) => {
+    try{
     const file = req.files?.file;
     const username = req.body.username;
     const group = req.body.group;
@@ -51,14 +52,14 @@ app.post('/', (req, res) => {
     }
 
     const id = uuidv4();
-    const timestamp = new Date().toISOString();
+    const timestamp = new Date().toISOString().replace(/[:]/g, '-');
     const ip = req.ip;
 
     const uploadDir = path.join(__dirname, 'uploads');
     fs.mkdirSync(uploadDir, { recursive: true });
 
-    const filePath = path.join(uploadDir, `${id}-${file.name}`);
-
+    const filePath = path.join(uploadDir, `${timestamp}-${file.name}`);
+    console.log(`Saving file to: ${filePath}`);
     file.mv(filePath, (err) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to save file' });
@@ -77,6 +78,10 @@ app.post('/', (req, res) => {
             }
         );
     });
+}catch(error){
+    console.error('Error handling upload:', error);
+    res.status(500).json({ error: 'Internal server error' });   
+}
 });
 
 
@@ -107,7 +112,7 @@ app.get('/groups', (req, res) => {
 app.get('/download/:group', (req, res) => {
     const group = req.params.group;
 
-    db.all(`SELECT id,file_name FROM uploads WHERE group_name = ?`, [group], (err, rows) => {
+    db.all(`SELECT id,timestamp,file_name FROM uploads WHERE group_name = ?`, [group], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to retrieve records' });
         }
@@ -126,7 +131,7 @@ app.get('/download/:group', (req, res) => {
         archive.pipe(res);
 
         rows.forEach((row) => {
-            const filePath = path.join(__dirname, 'uploads', `${row.id}-${row.file_name}`);
+            const filePath = path.join(__dirname, 'uploads', `${row.timestamp}-${row.file_name}`);
             //console.log(`Adding file to archive: ${filePath}-${row.file_name}`);
             if (fs.existsSync(filePath)) {
                 archive.file(filePath, { name: path.basename(filePath) });
